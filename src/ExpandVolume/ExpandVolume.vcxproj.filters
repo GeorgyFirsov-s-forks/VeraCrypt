@@ -126,6 +126,9 @@
     <ClCompile Include="..\Setup\SelfExtract.c">
       <Filter>Source Files\Setup</Filter>
     </ClCompile>
+    <ClCompile Include="..\Common\Xeh.c">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Common\Wipe.h">
@@ -228,6 +231,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Common\Xts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\Xeh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

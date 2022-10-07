@@ -440,7 +440,7 @@ KeyReady:	;
 
 				// Init objects related to the mode of operation
 
-				if (cryptoInfo->mode == XTS)
+				if (cryptoInfo->mode == XTS || cryptoInfo->mode == XEH)
 				{
 #ifndef TC_WINDOWS_DRIVER
 					// Copy the secondary key (if cascade, multiple concatenated)

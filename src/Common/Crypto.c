@@ -14,6 +14,7 @@
 #include "Tcdefs.h"
 #include "Crypto.h"
 #include "Xts.h"
+#include "Xeh.h"
 #include "Crc.h"
 #include "Common/Endian.h"
 #if !defined(_UEFI)
@@ -73,41 +74,41 @@ static Cipher Ciphers[] =
 // Encryption algorithm configuration
 static EncryptionAlgorithm EncryptionAlgorithms[] =
 {
-	//  Cipher(s)                     Modes						FormatEnabled
+	//  Cipher(s)							Modes				FormatEnabled
 
 #ifndef TC_WINDOWS_BOOT
 
-	{ { 0,							0 }, { 0, 0},		0, 0 },	// Must be all-zero
-	{ { AES,							0 }, { XTS, 0 },	1, 1 },
-	{ { SERPENT,					0 }, { XTS, 0 },	1, 1 },
-	{ { TWOFISH,					0 }, { XTS, 0 },	1, 1 },
-	{ { CAMELLIA,					0 }, { XTS, 0 },	1, 1 },
-	{ { KUZNYECHIK,				0 }, { XTS, 0 },	0, 1 },
-	{ { TWOFISH, AES,				0 }, { XTS, 0 },	1, 1 },
-	{ { SERPENT, TWOFISH, AES,	0 }, { XTS, 0 },	1, 1 },
-	{ { AES, SERPENT,				0 }, { XTS, 0 },	1, 1 },
-	{ { AES, TWOFISH, SERPENT,	0 }, { XTS, 0 },	1, 1 },
-	{ { SERPENT, TWOFISH,		0 }, { XTS, 0 },	1, 1 },
-	{ { KUZNYECHIK, CAMELLIA,		0 }, { XTS, 0 },	0, 1 },
-	{ { TWOFISH, KUZNYECHIK,		0 }, { XTS, 0 },	0, 1 },
-	{ { SERPENT, CAMELLIA,		0 }, { XTS, 0 },	0, 1 },
-	{ { AES, KUZNYECHIK,		0 }, { XTS, 0 },	0, 1 },
-	{ { CAMELLIA, SERPENT, KUZNYECHIK,	0 }, { XTS, 0 },	0, 1 },
-	{ { 0,							0 }, { 0,    0},	0, 0 }		// Must be all-zero
+	{ { 0,								0 }, { 0, 0},			0, 0 },	// Must be all-zero
+	{ { AES,							0 }, { XTS, XEH, 0 },	1, 1 },
+	{ { SERPENT,						0 }, { XTS, 0 },		1, 1 },
+	{ { TWOFISH,						0 }, { XTS, 0 },		1, 1 },
+	{ { CAMELLIA,						0 }, { XTS, 0 },		1, 1 },
+	{ { KUZNYECHIK,						0 }, { XTS, 0 },		0, 1 },
+	{ { TWOFISH, AES,					0 }, { XTS, 0 },		1, 1 },
+	{ { SERPENT, TWOFISH, AES,			0 }, { XTS, 0 },		1, 1 },
+	{ { AES, SERPENT,					0 }, { XTS, 0 },		1, 1 },
+	{ { AES, TWOFISH, SERPENT,			0 }, { XTS, 0 },		1, 1 },
+	{ { SERPENT, TWOFISH,				0 }, { XTS, 0 },		1, 1 },
+	{ { KUZNYECHIK, CAMELLIA,			0 }, { XTS, 0 },		0, 1 },
+	{ { TWOFISH, KUZNYECHIK,			0 }, { XTS, 0 },		0, 1 },
+	{ { SERPENT, CAMELLIA,				0 }, { XTS, 0 },		0, 1 },
+	{ { AES, KUZNYECHIK,				0 }, { XTS, 0 },		0, 1 },
+	{ { CAMELLIA, SERPENT, KUZNYECHIK,	0 }, { XTS, 0 },		0, 1 },
+	{ { 0,								0 }, { 0,    0},		0, 0 }	// Must be all-zero
 
 #else // TC_WINDOWS_BOOT
 
 	// Encryption algorithms available for boot drive encryption
-	{ { 0,						0 }, { 0, 0 },		0 },	// Must be all-zero
-	{ { AES,					0 }, { XTS, 0 },	1 },
-	{ { SERPENT,				0 }, { XTS, 0 },	1 },
-	{ { TWOFISH,				0 }, { XTS, 0 },	1 },
-	{ { TWOFISH, AES,			0 }, { XTS, 0 },	1 },
-	{ { SERPENT, TWOFISH, AES,	0 }, { XTS, 0 },	1 },
-	{ { AES, SERPENT,			0 }, { XTS, 0 },	1 },
-	{ { AES, TWOFISH, SERPENT,	0 }, { XTS, 0 },	1 },
-	{ { SERPENT, TWOFISH,		0 }, { XTS, 0 },	1 },
-	{ { 0,						0 }, { 0, 0 },		0 },	// Must be all-zero
+	{ { 0,						0 }, { 0, 0 },			0 },	// Must be all-zero
+	{ { AES,					0 }, { XTS, XEH, 0 },	1 },
+	{ { SERPENT,				0 }, { XTS, 0 },		1 },
+	{ { TWOFISH,				0 }, { XTS, 0 },		1 },
+	{ { TWOFISH, AES,			0 }, { XTS, 0 },		1 },
+	{ { SERPENT, TWOFISH, AES,	0 }, { XTS, 0 },		1 },
+	{ { AES, SERPENT,			0 }, { XTS, 0 },		1 },
+	{ { AES, TWOFISH, SERPENT,	0 }, { XTS, 0 },		1 },
+	{ { SERPENT, TWOFISH,		0 }, { XTS, 0 },		1 },
+	{ { 0,						0 }, { 0, 0 },			0 },	// Must be all-zero
 
 #endif
 
@@ -117,12 +118,12 @@ static EncryptionAlgorithm EncryptionAlgorithms[] =
 #ifndef TC_WINDOWS_BOOT
 // Hash algorithms
 static Hash Hashes[] =
-{	// ID				Name					Deprecated	System Encryption
-	{ SHA512,		L"SHA-512",				FALSE,	FALSE },
-	{ WHIRLPOOL,	L"Whirlpool",			FALSE,	FALSE },
-	{ BLAKE2S,		L"BLAKE2s-256",				FALSE,	TRUE },
-	{ SHA256,		L"SHA-256",				FALSE,	TRUE },
-	{ STREEBOG,		L"Streebog",	FALSE,	FALSE },
+{	// ID				Name		Deprecated	System Encryption
+	{ SHA512,		L"SHA-512",		FALSE,		FALSE },
+	{ WHIRLPOOL,	L"Whirlpool",	FALSE,		FALSE },
+	{ BLAKE2S,		L"BLAKE2s-256",	FALSE,		TRUE },
+	{ SHA256,		L"SHA-256",		FALSE,		TRUE },
+	{ STREEBOG,		L"Streebog",	FALSE,		FALSE },
 	{ 0, 0, 0 }
 };
 #endif
@@ -200,6 +201,36 @@ void EncipherBlock(int cipher, void *data, void *ks)
 	default:			TC_THROW_FATAL_EXCEPTION;	// Unknown/wrong ID
 	}
 }
+
+void EncipherBlockEx(int cipher, void *data_in, void *data_out, void *ks)
+{
+	switch (cipher)
+	{
+	case AES:	
+		// In 32-bit kernel mode, due to KeSaveFloatingPointState() overhead, AES instructions can be used only when processing the whole data unit.
+#if (defined (_WIN64) || !defined (TC_WINDOWS_DRIVER)) && !defined (TC_WINDOWS_BOOT)
+		if (IsAesHwCpuSupported())
+		{
+			memcpy(data_out, data_in, 16);
+			aes_hw_cpu_encrypt (ks, data_out);
+		}
+		else
+#endif
+			aes_encrypt (data_in, data_out, ks);
+		break;
+
+	case TWOFISH:		twofish_encrypt (ks, data_in, data_out); break;
+	case SERPENT:		serpent_encrypt (data_in, data_out, ks); break;
+#if !defined (TC_WINDOWS_BOOT) || defined (TC_WINDOWS_BOOT_CAMELLIA)
+	case CAMELLIA:		camellia_encrypt (data_in, data_out, ks); break;
+#endif
+#if !defined(TC_WINDOWS_BOOT)
+	case KUZNYECHIK:		kuznyechik_encrypt_block(data_out, data_in, ks); break;
+#endif // !defined(TC_WINDOWS_BOOT) 
+	default:			TC_THROW_FATAL_EXCEPTION;	// Unknown/wrong ID
+	}
+}
+
 
 #ifndef TC_WINDOWS_BOOT
 
@@ -311,6 +342,42 @@ void DecipherBlock(int cipher, void *data, void *ks)
 	default:		TC_THROW_FATAL_EXCEPTION;	// Unknown/wrong ID
 	}
 }
+
+void DecipherBlockEx(int cipher, void *data_in, void *data_out, void *ks)
+{
+	switch (cipher)
+	{
+	case SERPENT:	serpent_decrypt (data_in, data_out, ks); break;
+	case TWOFISH:	twofish_decrypt (ks, data_in, data_out); break;
+#if !defined (TC_WINDOWS_BOOT) || defined (TC_WINDOWS_BOOT_CAMELLIA)
+	case CAMELLIA:	camellia_decrypt (data_in, data_out, ks); break;
+#endif
+#if !defined(TC_WINDOWS_BOOT)
+	case KUZNYECHIK:	kuznyechik_decrypt_block(data_out, data_in, ks); break;
+#endif // !defined(TC_WINDOWS_BOOT)
+
+
+#ifndef TC_WINDOWS_BOOT
+
+	case AES:
+#if defined (_WIN64) || !defined (TC_WINDOWS_DRIVER)
+		if (IsAesHwCpuSupported())
+		{
+			memcpy(data_out, data_in, 16);
+			aes_hw_cpu_decrypt ((byte *) ks + sizeof (aes_encrypt_ctx), data_out);
+		}
+		else
+#endif
+			aes_decrypt (data_in, data_out, (void *) ((char *) ks + sizeof(aes_encrypt_ctx)));
+		break;
+
+#else
+	case AES:		aes_decrypt (data_in, data_out, ks); break;
+#endif
+	default:		TC_THROW_FATAL_EXCEPTION;	// Unknown/wrong ID
+	}
+}
+
 
 #ifndef TC_WINDOWS_BOOT
 
@@ -531,6 +598,17 @@ BOOL EAInitMode (PCRYPTO_INFO ci, unsigned char* key2)
 		that the size of each of the volumes is 1024 terabytes). */
 		break;
 
+	case XEH:
+		//
+		// BUGBUG: For now it is the same with XTS
+		// But it is necessary to generate keys differently for decryption
+		//
+
+		if (EAInit (ci->ea, key2, ci->ks2) != ERR_SUCCESS)
+			return FALSE;
+
+		break;
+
 	default:		
 		// Unknown/wrong ID
 		TC_THROW_FATAL_EXCEPTION;
@@ -639,6 +717,10 @@ wchar_t *EAGetModeName (int ea, int mode, BOOL capitalLetters)
 	case XTS:
 
 		return L"XTS";
+
+	case XEH:
+
+		return L"XEH";
 
 	}
 	return L"[unknown]";
@@ -921,6 +1003,7 @@ void EncryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 	switch (cryptoInfo->mode)
 	{
 	case XTS:
+	case XEH:
 		{
 			unsigned __int8 *ks = cryptoInfo->ks;
 			unsigned __int8 *ks2 = cryptoInfo->ks2;
@@ -972,6 +1055,7 @@ void EncryptDataUnitsCurrentThread (unsigned __int8 *buf, const UINT64_STRUCT *s
 	switch (ci->mode)
 	{
 	case XTS:
+	case XEH:
 		for (cipher = EAGetFirstCipher (ea); cipher != 0; cipher = EAGetNextCipher (ea, cipher))
 		{
 			EncryptBufferXTS (buf,
@@ -1003,6 +1087,7 @@ void DecryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 	switch (cryptoInfo->mode)
 	{
 	case XTS:
+	case XEH:
 		{
 			unsigned __int8 *ks = cryptoInfo->ks + EAGetKeyScheduleSize (cryptoInfo->ea);
 			unsigned __int8 *ks2 = cryptoInfo->ks2 + EAGetKeyScheduleSize (cryptoInfo->ea);
@@ -1054,6 +1139,7 @@ void DecryptDataUnitsCurrentThread (unsigned __int8 *buf, const UINT64_STRUCT *s
 	switch (ci->mode)
 	{
 	case XTS:
+	case XEH:
 		ks += EAGetKeyScheduleSize (ea);
 		ks2 += EAGetKeyScheduleSize (ea);
 

@@ -103,3 +103,23 @@ src/Setup/PortableRelease
 
 src/SetupDLL/Debug
 src/SetupDLL/Release
+
+
+doc/chm/LinuxPrepAndBuild.sh
+src/COMReg/Release/
+src/Release/Setup Files/VeraCrypt COMReg.exe
+src/Release/Setup Files/VeraCrypt Format-x64.exe
+src/Release/Setup Files/VeraCrypt Format.exe
+src/Release/Setup Files/VeraCrypt Portable.exe
+src/Release/Setup Files/VeraCrypt Setup.exe
+src/Release/Setup Files/VeraCrypt-x64.exe
+src/Release/Setup Files/VeraCrypt.exe
+src/Release/Setup Files/VeraCryptCOMRegBase.exe
+src/Release/Setup Files/VeraCryptExpander-x64.exe
+src/Release/Setup Files/VeraCryptExpander.exe
+src/Release/Setup Files/VeraCryptSetup.dll
+src/Release/Setup Files/bin/
+src/VeraCrypt.opensdf
+src/VeraCrypt.sdf
+src/VeraCrypt.suo
+src/ipch/

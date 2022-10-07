@@ -58,6 +58,7 @@
 #include "Wipe.h"
 #include "Xml.h"
 #include "Xts.h"
+#include "Xeh.h"
 #include "Boot/Windows/BootCommon.h"
 #include "Progress.h"
 #include "zip.h"
@@ -1024,18 +1025,37 @@ static void FinalizeWintrust()
 BOOL VerifyModuleSignature (const wchar_t* path)
 {
 #if defined(NDEBUG) && !defined (VC_SKIP_OS_DRIVER_REQ_CHECK)
+	//
+	// Commented out
+	// More info: https://www.veracrypt.fr/en/CompilingGuidelineWin.html#hide21
+	//
+
+	/*
 	BOOL bResult = FALSE;
 	HRESULT hResult;
 	GUID gActionID = WINTRUST_ACTION_GENERIC_VERIFY_V2;
 	WINTRUST_FILE_INFO  fileInfo = {0};
 	WINTRUST_DATA      WVTData = {0};
 	wchar_t filePath [TC_MAX_PATH + 1024];
+	*/
 
     // we check our own authenticode signature only starting from Windows 10 since this is
 	// the minimal supported OS apart from XP where we can't verify SHA256 signatures
-	if (!IsOSAtLeast (WIN_10))
-		return TRUE;
 
+	//
+	// Commented out
+	// More info: https://www.veracrypt.fr/en/CompilingGuidelineWin.html#hide21
+	//
+
+	//if (!IsOSAtLeast (WIN_10))
+	return TRUE;
+
+	//
+	// Commented out
+	// More info: https://www.veracrypt.fr/en/CompilingGuidelineWin.html#hide21
+	//
+
+	/*
 	// Strip quotation marks (if any)
 	if (path [0] == L'"')
 	{
@@ -1098,6 +1118,7 @@ BOOL VerifyModuleSignature (const wchar_t* path)
 	FinalizeWintrust ();
 
 	return bResult;
+	*/
 #else
 	return TRUE;
 #endif

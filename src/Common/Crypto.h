@@ -90,6 +90,7 @@ enum
 	/* If you add/remove a mode, update the following: GetMaxPkcs5OutSize(), EAInitMode() */
 
 	XTS = FIRST_MODE_OF_OPERATION_ID,
+	XEH,
 	MODE_ENUM_END_ID
 };
 
@@ -102,6 +103,12 @@ enum
 
 // Number of ciphertext/plaintext blocks per XTS data unit
 #define BLOCKS_PER_XTS_DATA_UNIT	(ENCRYPTION_DATA_UNIT_SIZE / BYTES_PER_XTS_BLOCK)
+
+// Ciphertext/plaintext block size for XEH mode (in bytes)
+#define BYTES_PER_XEH_BLOCK			16
+
+// Number of ciphertext/plaintext blocks per XEH data unit
+#define BLOCKS_PER_XEH_DATA_UNIT	(ENCRYPTION_DATA_UNIT_SIZE / BYTES_PER_XEH_BLOCK)
 
 
 // Cipher IDs
@@ -242,7 +249,7 @@ typedef struct CRYPTO_INFO_t
 	int pkcs5;								/* PRF algorithm */
 
 	unsigned __int8 ks[MAX_EXPANDED_KEY];	/* Primary key schedule (if it is a cascade, it conatins multiple concatenated keys) */
-	unsigned __int8 ks2[MAX_EXPANDED_KEY];	/* Secondary key schedule (if cascade, multiple concatenated) for XTS mode. */
+	unsigned __int8 ks2[MAX_EXPANDED_KEY];	/* Secondary key schedule (if cascade, multiple concatenated) for XTS/XEH mode. */
 
 	BOOL hiddenVolume;						// Indicates whether the volume is mounted/mountable as hidden volume
 
@@ -253,7 +260,7 @@ typedef struct CRYPTO_INFO_t
 	unsigned __int8 master_keydata_hash[BLAKE2S_DIGESTSIZE];
 #else
 	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 master_keydata[MASTER_KEYDATA_SIZE];	/* This holds the volume header area containing concatenated master key(s) and secondary key(s) (XTS mode). For LRW (deprecated/legacy), it contains the tweak key before the master key(s). For CBC (deprecated/legacy), it contains the IV seed before the master key(s). */
-	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 k2[MASTER_KEYDATA_SIZE];				/* For XTS, this contains the secondary key (if cascade, multiple concatenated). For LRW (deprecated/legacy), it contains the tweak key. For CBC (deprecated/legacy), it contains the IV seed. */
+	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 k2[MASTER_KEYDATA_SIZE];				/* For XTS/XEH, this contains the secondary key (if cascade, multiple concatenated). For LRW (deprecated/legacy), it contains the tweak key. For CBC (deprecated/legacy), it contains the IV seed. */
 #endif
 
 	int noIterations;	
@@ -330,7 +337,9 @@ int EAInit (unsigned char *key, unsigned char *ks);
 #endif
 BOOL EAInitMode (PCRYPTO_INFO ci, unsigned char* key2);
 void EncipherBlock(int cipher, void *data, void *ks);
+void EncipherBlockEx(int cipher, void *data_in, void *data_out, void *ks);
 void DecipherBlock(int cipher, void *data, void *ks);
+void DecipherBlockEx(int cipher, void *data_in, void *data_out, void *ks);
 #ifndef TC_WINDOWS_BOOT
 void EncipherBlocks (int cipher, void *dataPtr, void *ks, size_t blockCount);
 void DecipherBlocks (int cipher, void *dataPtr, void *ks, size_t blockCount);
