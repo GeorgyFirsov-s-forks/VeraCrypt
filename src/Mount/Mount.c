@@ -4247,9 +4247,10 @@ BOOL CALLBACK VolumePropertiesDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				StringCbPrintfW (sw, sizeof(sw), L"%d %s", size * 8, GetString ("BITS"));
 				ListSubItemSet (list, i++, 1, sw);
 
-				if (wcscmp (EAGetModeName (prop.ea, prop.mode, TRUE), L"XTS") == 0)
+				if (wcscmp (EAGetModeName (prop.ea, prop.mode, TRUE), L"XTS") == 0 ||
+					wcscmp (EAGetModeName (prop.ea, prop.mode, TRUE), L"XEH") == 0)
 				{
-					// Secondary key (XTS)
+					// Secondary key (XTS, XEH)
 
 					ListItemAdd (list, i, GetString ("SECONDARY_KEY_SIZE_XTS"));
 					ListSubItemSet (list, i++, 1, sw);

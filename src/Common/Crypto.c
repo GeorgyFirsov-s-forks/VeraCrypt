@@ -897,6 +897,10 @@ int GetMaxPkcs5OutSize (void)
 
 	size = VC_MAX (size, EAGetLargestKeyForMode (XTS) * 2);	// Sizes of primary + secondary keys
 
+	//
+	// XEH has the same key scheme, so we don't need to mention it here
+	//
+
 	return size;
 }
 
