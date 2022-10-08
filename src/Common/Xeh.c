@@ -14,7 +14,6 @@
 TODO:
 - Implement XEH encryption instead of XTS algorithm
 - Implement XEH decryption instead of XTS algorithm
-- Fix decryption key generation
 
 */
 
@@ -138,15 +137,14 @@ __forceinline __m128i gf128_multiply_primitive(__m128i op)
 }
 
 
-__forceinline void xehaesp_tweaks_init(unsigned long long sector, 
-									   unsigned __int8 *first_key, 
-									   unsigned __int8 *second_key,
-									   __m128i *tweak1, 
-									   __m128i *tweak2, 
-									   __m128i *tweak3,
-									   int cipher)
+__forceinline void xehp_tweaks_init(int cipher,
+									unsigned long long sector, 
+									unsigned __int8 *first_key, 
+									unsigned __int8 *second_key,
+									__m128i *tweak1, 
+									__m128i *tweak2, 
+									__m128i *tweak3)
 {
-    __m128i                 internal_sector;
     unsigned int            idx;
     ALIGN16 unsigned char   internal_tweak[BYTES_PER_XEH_BLOCK];
 
@@ -155,77 +153,17 @@ __forceinline void xehaesp_tweaks_init(unsigned long long sector,
         internal_tweak[idx] = (unsigned char)(sector & 0xFF);
         sector >>= 8;
     }
-
-    internal_sector = _mm_load_si128((const __m128i *)internal_tweak);
     
-	EncipherBlockEx (cipher, &internal_sector, tweak1, first_key);
-	EncipherBlockEx (cipher, tweak1,           tweak2, second_key);
-	EncipherBlockEx (cipher, &internal_sector, tweak3, second_key);
+	EncipherBlockEx (cipher, internal_tweak, tweak1, first_key);
+	EncipherBlockEx (cipher, tweak1,         tweak2, second_key);
+	EncipherBlockEx (cipher, internal_tweak, tweak3, second_key);
 }
 
 
-__forceinline void xehaesp_apply_f_inverse(const unsigned char *in, 
-										   unsigned long blocks, 
-										   __m128i tweak3, 
-										   unsigned char *out)
-{
-    //
-    // Implementation of inverse of f
-    //
-
-    __m128i         Y;
-    __m128i         accumulated_tweak;
-    __m128i         immediate;
-    __m128i         temp;
-    unsigned int    block;
-
-    const __m128i   *internal_in  = (const __m128i *)in;
-    __m128i         *internal_out = (__m128i *)out;
-
-    //
-    // First recover n - 1 blocks
-    //
-
-    immediate = _mm_loadu_si128(&internal_in[blocks - 1]);
-
-    for (block = 0; block < blocks - 1; ++block)
-    {
-        internal_out[block] = _mm_xor_si128(internal_in[block], immediate);
-    }
-
-    //
-    // Now recover the last one
-    //
-
-    Y                 = _mm_setr_epi32(0, 0, 0, 0);
-    accumulated_tweak = tweak3;
-
-    for (block = blocks - 1; block > 0; --block)
-    {
-        //
-        // Calculate current multiplier and multtiply by current block
-        //
-
-        temp              = _mm_setr_epi32(block, 0, 0, 0);
-        temp              = _mm_xor_si128(temp, accumulated_tweak);
-        temp              = gf128_multiply(internal_out[block - 1], temp);
-
-        //
-        // Add to immediate value and get next power of tweak
-        //
-
-        Y                 = _mm_xor_si128(Y, temp);
-        accumulated_tweak = gf128_multiply(accumulated_tweak, tweak3);
-    }
-
-    internal_out[blocks - 1] = _mm_xor_si128(internal_in[blocks - 1], Y);
-}
-
-
-__forceinline void xehaesp_apply_f(const unsigned char *in, 
-								   unsigned long blocks, 
-								   __m128i tweak3, 
-								   unsigned char *out)
+__forceinline void xehp_apply_f(const unsigned char *in, 
+								unsigned long blocks, 
+								__m128i tweak3,
+								unsigned char *out)
 {
     //
     // Implementation of f permutation:
@@ -296,6 +234,169 @@ __forceinline void xehaesp_apply_f(const unsigned char *in,
 }
 
 
+__forceinline void xehp_apply_f_inverse(const unsigned char *in, 
+										unsigned long blocks, 
+										__m128i tweak3, 
+										unsigned char *out)
+{
+    //
+    // Implementation of inverse of f
+    //
+
+    __m128i         Y;
+    __m128i         accumulated_tweak;
+    __m128i         immediate;
+    __m128i         temp;
+    unsigned int    block;
+
+    const __m128i   *internal_in  = (const __m128i *)in;
+    __m128i         *internal_out = (__m128i *)out;
+
+    //
+    // First recover n - 1 blocks
+    //
+
+    immediate = _mm_loadu_si128(&internal_in[blocks - 1]);
+
+    for (block = 0; block < blocks - 1; ++block)
+    {
+        internal_out[block] = _mm_xor_si128(internal_in[block], immediate);
+    }
+
+    //
+    // Now recover the last one
+    //
+
+    Y                 = _mm_setr_epi32(0, 0, 0, 0);
+    accumulated_tweak = tweak3;
+
+    for (block = blocks - 1; block > 0; --block)
+    {
+        //
+        // Calculate current multiplier and multtiply by current block
+        //
+
+        temp              = _mm_setr_epi32(block, 0, 0, 0);
+        temp              = _mm_xor_si128(temp, accumulated_tweak);
+        temp              = gf128_multiply(internal_out[block - 1], temp);
+
+        //
+        // Add to immediate value and get next power of tweak
+        //
+
+        Y                 = _mm_xor_si128(Y, temp);
+        accumulated_tweak = gf128_multiply(accumulated_tweak, tweak3);
+    }
+
+    internal_out[blocks - 1] = _mm_xor_si128(internal_in[blocks - 1], Y);
+}
+
+
+
+void xehp_encrypt_data_unit(int cipher,
+							unsigned long long sector, 
+							const unsigned char *in, 
+							unsigned long blocks, 
+							unsigned __int8 *data_key, 
+							unsigned __int8 *tweak_key,
+							unsigned char *out)
+{
+    unsigned int    block;
+
+    __m128i         temporary;
+    __m128i         tweak1;
+    __m128i         tweak2;
+    __m128i         tweak3;
+
+    xehp_tweaks_init(cipher, sector, data_key, tweak_key, &tweak1, &tweak2, &tweak3);
+
+    for (block = 0; block < blocks; ++block, in += BYTES_PER_XEH_BLOCK, out += BYTES_PER_XEH_BLOCK)
+    {
+        //
+        // Pre-whitening
+        //
+
+        temporary = _mm_loadu_si128((const __m128i *)in);
+        temporary = _mm_xor_si128(temporary, tweak1);
+
+		//
+		// Actual encryption
+		//
+
+		EncipherBlock (cipher, &temporary, (void *)data_key);
+
+		//
+		// Post-whitening
+		//
+
+        temporary = _mm_xor_si128(temporary, tweak2);
+
+        _mm_storeu_si128((__m128i *)out, temporary);
+
+        //
+        // Multiply tweak by x (alpha)
+        //
+
+        tweak1 = gf128_multiply_primitive(tweak1);
+        tweak2 = gf128_multiply_primitive(tweak2);
+    }
+
+    out -= (BYTES_PER_XEH_BLOCK * blocks);
+    xehp_apply_f_inverse(out, blocks, tweak3, out);
+}
+
+
+void xehp_decrypt_data_unit(int cipher,
+							unsigned long long sector, 
+							const unsigned char *in, 
+							unsigned long blocks,
+							unsigned __int8 *data_key, 
+							unsigned __int8 *tweak_key, 
+							unsigned char *out)
+{
+    unsigned int    block;
+
+    __m128i         temporary;
+    __m128i         tweak1;
+    __m128i         tweak2;
+    __m128i         tweak3;
+
+    xehp_tweaks_init(cipher, sector, data_key, tweak_key, &tweak1, &tweak2, &tweak3);
+
+    xehp_apply_f(in, blocks, tweak3, out);
+
+    for (block = 0; block < blocks; ++block, out += BYTES_PER_XEH_BLOCK)
+    {
+        //
+        // Pre-whitening
+        //
+
+        temporary = _mm_loadu_si128((const __m128i *)out);
+        temporary = _mm_xor_si128(temporary, tweak2);
+
+		//
+		// Actual decryption
+		//
+
+		DecipherBlock(cipher, &temporary, data_key);
+
+		//
+		// Post-whitening
+		//
+
+        temporary = _mm_xor_si128(temporary, tweak1);
+
+        _mm_storeu_si128((__m128i *)out, temporary);
+
+        //
+        // Multiply tweak by x (alpha)
+        //
+
+        tweak1 = gf128_multiply_primitive(tweak1);
+        tweak2 = gf128_multiply_primitive(tweak2);
+    }
+}
+
 
 // length: number of bytes to encrypt; may be larger than one data unit and must be divisible by the cipher block size
 // ks: the primary key schedule
@@ -315,20 +416,22 @@ void EncryptBufferXEH (unsigned __int8 *buffer,
 					   unsigned __int8 *ks2,
 					   int cipher)
 {
-	unsigned __int8 finalCarry;
-	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 whiteningValue [BYTES_PER_XEH_BLOCK];
-	unsigned __int8 byteBufUnitNo [BYTES_PER_XEH_BLOCK];
-	unsigned __int64 *whiteningValuePtr64 = (unsigned __int64 *) whiteningValue;
-	unsigned __int64 *bufPtr = (unsigned __int64 *) buffer;
-	unsigned int startBlock = startCipherBlockNo, endBlock, block;
-	TC_LARGEST_COMPILER_UINT blockCount, dataUnitNo;
+	unsigned __int8				byteBufUnitNo [BYTES_PER_XEH_BLOCK];
+	unsigned int				startBlock = startCipherBlockNo;
+	unsigned int				endBlock;
+	TC_LARGEST_COMPILER_UINT	blockCount;
+	TC_LARGEST_COMPILER_UINT	dataUnitNo;
 
-	/* The encrypted data unit number (i.e. the resultant ciphertext block) is to be multiplied in the
-	finite field GF(2^128) by j-th power of n, where j is the sequential plaintext/ciphertext block
-	number and n is 2, a primitive element of GF(2^128). This can be (and is) simplified and implemented
-	as a left shift of the preceding whitening value by one bit (with carry propagating). In addition, if
-	the shift of the highest byte results in a carry, 135 is XORed into the lowest byte. The value 135 is
-	derived from the modulus of the Galois Field (x^128+x^7+x^2+x+1). */
+	//
+	// Let's assume the worst case of 4Kb data unit.
+	// It contains 256 blocks, so unsigned long should be pretty enough.
+	//
+
+	unsigned long				dataUnitBlockCount;
+
+	//
+	// Well, this stuff was stolen from XTS implementation
+	//
 
 	// Convert the 64-bit data unit number into a little-endian 16-byte array.
 	// Note that as we are converting a 64-bit number into a 16-byte array we can always zero the last 8 bytes.
@@ -336,8 +439,9 @@ void EncryptBufferXEH (unsigned __int8 *buffer,
 	*((unsigned __int64 *) byteBufUnitNo) = LE64 (dataUnitNo);
 	*((unsigned __int64 *) byteBufUnitNo + 1) = 0;
 
-	if (length % BYTES_PER_XEH_BLOCK)
+	if (length % BYTES_PER_XEH_BLOCK) {
 		TC_THROW_FATAL_EXCEPTION;
+	}
 
 	blockCount = length / BYTES_PER_XEH_BLOCK;
 
@@ -348,72 +452,39 @@ void EncryptBufferXEH (unsigned __int8 *buffer,
 		// Encrypt several sectors (data units) here
 		//
 
-		if (blockCount < BLOCKS_PER_XEH_DATA_UNIT)
+		if (blockCount < BLOCKS_PER_XEH_DATA_UNIT) {
 			endBlock = startBlock + (unsigned int) blockCount;
-		else
+		}
+		else {
 			endBlock = BLOCKS_PER_XEH_DATA_UNIT;
-
-		whiteningValuePtr64 = (unsigned __int64 *) whiteningValue;
-
-		// Encrypt the data unit number using the secondary key (in order to generate the first
-		// whitening value for this data unit)
-		*whiteningValuePtr64 = *((unsigned __int64 *) byteBufUnitNo);
-		*(whiteningValuePtr64 + 1) = 0;
-		EncipherBlock (cipher, whiteningValue, ks2);
-
-		// Generate (and apply) subsequent whitening values for blocks in this data unit and
-		// encrypt all relevant blocks in this data unit
-		for (block = 0; block < endBlock; block++)
-		{
-			if (block >= startBlock)
-			{
-				// Pre-whitening
-				__m128i xmm1 = _mm_loadu_si128((const __m128i*)whiteningValuePtr64);
-				__m128i xmm2 = _mm_loadu_si128((__m128i*)bufPtr);
-
-				_mm_storeu_si128((__m128i*)bufPtr, _mm_xor_si128(xmm1, xmm2));
-
-				// Actual encryption
-				EncipherBlock (cipher, bufPtr, ks);
-
-				// Post-whitening
-				xmm1 = _mm_loadu_si128((const __m128i*)whiteningValuePtr64);
-				xmm2 = _mm_loadu_si128((__m128i*)bufPtr);
-
-				_mm_storeu_si128((__m128i*)bufPtr, _mm_xor_si128(xmm1, xmm2));
-				
-				whiteningValuePtr64++;
-				bufPtr += 2;
-			}
-			else
-				whiteningValuePtr64++;
-
-			//
-			// Derive the next whitening value
-			//
-
-			finalCarry =
-				(*whiteningValuePtr64 & 0x8000000000000000) ?
-				135 : 0;
-
-			*whiteningValuePtr64-- <<= 1;
-
-			if (*whiteningValuePtr64 & 0x8000000000000000)
-				*(whiteningValuePtr64 + 1) |= 1;
-
-			*whiteningValuePtr64 <<= 1;
-
-
-			whiteningValue[0] ^= finalCarry;
 		}
 
-		blockCount -= endBlock - startBlock;
+		dataUnitBlockCount = endBlock - startBlock;
+
+		//
+		// Encrypt data
+		// I don't want to write code here, because it will
+		// look sad :( Just refer to XTS for an example
+		// So I just call my implementation
+		//
+
+		xehp_encrypt_data_unit(cipher, dataUnitNo, buffer, dataUnitBlockCount, ks, ks2, buffer);
+
+		//
+		// Seek buffer
+		//
+
+		buffer += dataUnitBlockCount * BYTES_PER_XEH_BLOCK;
+
+		//
+		// The rest was stolen from XTS too
+		//
+
+		blockCount -= dataUnitBlockCount;
 		startBlock = 0;
 		dataUnitNo++;
 		*((unsigned __int64 *) byteBufUnitNo) = LE64 (dataUnitNo);
 	}
-
-	FAST_ERASE64 (whiteningValue, sizeof (whiteningValue));
 }
 
 
@@ -425,13 +496,22 @@ void DecryptBufferXEH (unsigned __int8 *buffer,
 					   unsigned __int8 *ks2,
 					   int cipher)
 {
-	unsigned __int8 finalCarry;
-	unsigned __int8 whiteningValue [BYTES_PER_XEH_BLOCK];
-	unsigned __int8 byteBufUnitNo [BYTES_PER_XEH_BLOCK];
-	unsigned __int64 *whiteningValuePtr64 = (unsigned __int64 *) whiteningValue;
-	unsigned __int64 *bufPtr = (unsigned __int64 *) buffer;
-	unsigned int startBlock = startCipherBlockNo, endBlock, block;
-	TC_LARGEST_COMPILER_UINT blockCount, dataUnitBlockCount, dataUnitNo;
+	unsigned __int8				byteBufUnitNo [BYTES_PER_XEH_BLOCK];
+	unsigned int				startBlock = startCipherBlockNo;
+	unsigned int				endBlock;
+	TC_LARGEST_COMPILER_UINT	blockCount;
+	TC_LARGEST_COMPILER_UINT	dataUnitNo;
+
+	//
+	// Let's assume the worst case of 4Kb data unit.
+	// It contains 256 blocks, so unsigned long should be pretty enough.
+	//
+
+	unsigned long				dataUnitBlockCount;
+
+	//
+	// Well, this stuff was stolen from XTS implementation
+	//
 
 	// Convert the 64-bit data unit number into a little-endian 16-byte array.
 	// Note that as we are converting a 64-bit number into a 16-byte array we can always zero the last 8 bytes.
@@ -439,8 +519,9 @@ void DecryptBufferXEH (unsigned __int8 *buffer,
 	*((unsigned __int64 *) byteBufUnitNo) = LE64 (dataUnitNo);
 	*((unsigned __int64 *) byteBufUnitNo + 1) = 0;
 
-	if (length % BYTES_PER_XEH_BLOCK)
+	if (length % BYTES_PER_XEH_BLOCK) {
 		TC_THROW_FATAL_EXCEPTION;
+	}
 
 	blockCount = length / BYTES_PER_XEH_BLOCK;
 
@@ -451,83 +532,37 @@ void DecryptBufferXEH (unsigned __int8 *buffer,
 		// Decrypt several sectors (data units) here
 		//
 
-		if (blockCount < BLOCKS_PER_XEH_DATA_UNIT)
+		if (blockCount < BLOCKS_PER_XEH_DATA_UNIT) {
 			endBlock = startBlock + (unsigned int) blockCount;
-		else
+		}
+		else {
 			endBlock = BLOCKS_PER_XEH_DATA_UNIT;
-
-		//
-		// Derive tweak values
-		// BUGBUG: here we need BOTH ks and ks2 to be ENCRYPTION keys, not decryption ones.
-		// Need to fix key initialization
-		//
-		// Example:
-		//    aes128_initalize_decrypt_key(data_key,  &internal_data_key);   // ks  for data decryption
-		//    aes128_initalize_encrypt_key(data_key,  &internal_tweak_key1); // ks  for tweak derivation
-		//    aes128_initalize_encrypt_key(tweak_key, &internal_tweak_key2); // ks2 for tweak derivation
-		//
-
-		// xehaesp_tweaks_init(dataUnitNo, ks, ks2, &tweak1, &tweak2, &tweak3, cipher);
-
-		//
-		// Apply f transformation
-		//
+		}
 
 		dataUnitBlockCount = endBlock - startBlock;
-		// xehaesp_apply_f(bufPtr, (unsigned long)dataUnitBlockCount, tweak3, bufPtr);
 
 		//
-		// Now comes decryption itself
+		// Decrypt data
+		// I don't want to write code here, because it will
+		// look sad :( Just refer to XTS for an example
+		// So I just call my implementation
 		//
 
-		// Generate (and apply) subsequent whitening values for blocks in this data unit and
-		// decrypt all relevant blocks in this data unit
-		for (block = 0; block < endBlock; block++)
-		{
-			if (block >= startBlock)
-			{
-				// Post-whitening
-				__m128i xmm1 = _mm_loadu_si128((const __m128i*)whiteningValuePtr64);
-				__m128i xmm2 = _mm_loadu_si128((__m128i*)bufPtr);
+		xehp_decrypt_data_unit(cipher, dataUnitNo, buffer, dataUnitBlockCount, ks, ks2, buffer);
 
-				_mm_storeu_si128((__m128i*)bufPtr, _mm_xor_si128(xmm1, xmm2));
+		//
+		// Seek buffer
+		//
 
-				// Actual decryption
-				DecipherBlock (cipher, bufPtr, ks);
+		buffer += dataUnitBlockCount * BYTES_PER_XEH_BLOCK;
 
-				// Pre-whitening
-				xmm1 = _mm_loadu_si128((const __m128i*)whiteningValuePtr64);
-				xmm2 = _mm_loadu_si128((__m128i*)bufPtr);
-
-				_mm_storeu_si128((__m128i*)bufPtr, _mm_xor_si128(xmm1, xmm2));
-				
-				whiteningValuePtr64++;
-				bufPtr += 2;
-			}
-			else
-				whiteningValuePtr64++;
-
-			// Derive the next whitening value
-
-			finalCarry =
-				(*whiteningValuePtr64 & 0x8000000000000000) ?
-				135 : 0;
-
-			*whiteningValuePtr64-- <<= 1;
-
-			if (*whiteningValuePtr64 & 0x8000000000000000)
-				*(whiteningValuePtr64 + 1) |= 1;
-
-			*whiteningValuePtr64 <<= 1;
-
-			whiteningValue[0] ^= finalCarry;
-		}
+		//
+		// The rest was stolen from XTS too
+		//
 
 		blockCount -= dataUnitBlockCount;
 		startBlock = 0;
 		dataUnitNo++;
 		*((unsigned __int64 *) byteBufUnitNo) = LE64 (dataUnitNo);
 	}
-
-	FAST_ERASE64 (whiteningValue, sizeof (whiteningValue));
 }

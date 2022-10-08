@@ -144,6 +144,9 @@
     <ClCompile Include="..\Crypto\blake2s_SSSE3.c">
       <Filter>Source Files\Crypto</Filter>
     </ClCompile>
+    <ClCompile Include="..\Common\Xeh.c">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Crypto\Aes_hw_cpu.asm">

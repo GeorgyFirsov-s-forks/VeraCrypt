@@ -137,6 +137,11 @@ int CipherInit (int cipher, unsigned char *key, unsigned __int8 *ks)
 	{
 	case AES:
 #ifndef TC_WINDOWS_BOOT
+		//
+		// Well... Here decryption key scedule comes just after the encryption one
+		// Surprising though...
+		//
+
 		if (aes_encrypt_key256 (key, (aes_encrypt_ctx *) ks) != EXIT_SUCCESS)
 			return ERR_CIPHER_INIT_FAILURE;
 
@@ -587,6 +592,11 @@ BOOL EAInitMode (PCRYPTO_INFO ci, unsigned char* key2)
 	switch (ci->mode)
 	{
 	case XTS:
+	case XEH:
+		//
+		// XEH and XTS intentionally have the same key scheme
+		//
+
 		// Secondary key schedule
 		if (EAInit (ci->ea, key2, ci->ks2) != ERR_SUCCESS)
 			return FALSE;
@@ -596,17 +606,6 @@ BOOL EAInitMode (PCRYPTO_INFO ci, unsigned char* key2)
 		mode). However, to create a TrueCrypt volume with such a weak key, each human being on Earth would have
 		to create approximately 11,378,125,361,078,862 (about eleven quadrillion) TrueCrypt volumes (provided 
 		that the size of each of the volumes is 1024 terabytes). */
-		break;
-
-	case XEH:
-		//
-		// BUGBUG: For now it is the same with XTS
-		// But it is necessary to generate keys differently for decryption
-		//
-
-		if (EAInit (ci->ea, key2, ci->ks2) != ERR_SUCCESS)
-			return FALSE;
-
 		break;
 
 	default:		
@@ -1055,10 +1054,25 @@ void EncryptDataUnitsCurrentThread (unsigned __int8 *buf, const UINT64_STRUCT *s
 	switch (ci->mode)
 	{
 	case XTS:
-	case XEH:
 		for (cipher = EAGetFirstCipher (ea); cipher != 0; cipher = EAGetNextCipher (ea, cipher))
 		{
 			EncryptBufferXTS (buf,
+				nbrUnits * ENCRYPTION_DATA_UNIT_SIZE,
+				structUnitNo,
+				0,
+				ks,
+				ks2,
+				cipher);
+
+			ks += CipherGetKeyScheduleSize (cipher);
+			ks2 += CipherGetKeyScheduleSize (cipher);
+		}
+		break;
+
+	case XEH:
+		for (cipher = EAGetFirstCipher (ea); cipher != 0; cipher = EAGetNextCipher (ea, cipher))
+		{
+			EncryptBufferXEH (buf,
 				nbrUnits * ENCRYPTION_DATA_UNIT_SIZE,
 				structUnitNo,
 				0,
@@ -1087,7 +1101,6 @@ void DecryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 	switch (cryptoInfo->mode)
 	{
 	case XTS:
-	case XEH:
 		{
 			unsigned __int8 *ks = cryptoInfo->ks + EAGetKeyScheduleSize (cryptoInfo->ea);
 			unsigned __int8 *ks2 = cryptoInfo->ks2 + EAGetKeyScheduleSize (cryptoInfo->ea);
@@ -1108,6 +1121,31 @@ void DecryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 				ks2 -= CipherGetKeyScheduleSize (cipher);
 
 				DecryptBufferXTS (buf, len, &dataUnitNo, 0, ks, ks2, cipher);
+			}
+		}
+		break;
+
+	case XEH:
+		{
+			unsigned __int8 *ks = cryptoInfo->ks + EAGetKeyScheduleSize (cryptoInfo->ea);
+			unsigned __int8 *ks2 = cryptoInfo->ks2 + EAGetKeyScheduleSize (cryptoInfo->ea);
+			UINT64_STRUCT dataUnitNo;
+			int cipher;
+
+			// When encrypting/decrypting a buffer (typically a volume header) the sequential number
+			// of the first XTS data unit in the buffer is always 0 and the start of the buffer is
+			// always assumed to be aligned with the start of the data unit 0.
+			dataUnitNo.LowPart = 0;
+			dataUnitNo.HighPart = 0;
+
+			for (cipher = EAGetLastCipher (cryptoInfo->ea);
+				cipher != 0;
+				cipher = EAGetPreviousCipher (cryptoInfo->ea, cipher))
+			{
+				ks -= CipherGetKeyScheduleSize (cipher);
+				ks2 -= CipherGetKeyScheduleSize (cipher);
+
+				DecryptBufferXEH (buf, len, &dataUnitNo, 0, ks, ks2, cipher);
 			}
 		}
 		break;

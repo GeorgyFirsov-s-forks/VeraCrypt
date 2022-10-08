@@ -192,6 +192,7 @@ BuildDriver.cmd -rebuild -debug -x64 "$(SolutionDir)\Common" "$(SolutionDir)\Cry
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Common\Xeh.c" />
     <ClCompile Include="..\Crypto\blake2s.c" />
     <ClCompile Include="..\Crypto\blake2s_SSE2.c" />
     <ClCompile Include="..\Crypto\blake2s_SSE41.c" />

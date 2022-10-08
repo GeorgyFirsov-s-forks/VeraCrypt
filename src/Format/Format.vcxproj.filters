@@ -108,6 +108,9 @@
     <ClCompile Include="..\Common\Xts.c">
       <Filter>Source Files\Common</Filter>
     </ClCompile>
+    <ClCompile Include="..\Common\Xeh.c">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="FormatCom.idl">
