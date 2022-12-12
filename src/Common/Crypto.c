@@ -78,37 +78,37 @@ static EncryptionAlgorithm EncryptionAlgorithms[] =
 
 #ifndef TC_WINDOWS_BOOT
 
-	{ { 0,								0 }, { 0, 0},			0, 0 },	// Must be all-zero
-	{ { AES,							0 }, { XTS, XEH, 0 },	1, 1 },
-	{ { SERPENT,						0 }, { XTS, 0 },		1, 1 },
-	{ { TWOFISH,						0 }, { XTS, 0 },		1, 1 },
-	{ { CAMELLIA,						0 }, { XTS, 0 },		1, 1 },
-	{ { KUZNYECHIK,						0 }, { XTS, 0 },		0, 1 },
-	{ { TWOFISH, AES,					0 }, { XTS, 0 },		1, 1 },
-	{ { SERPENT, TWOFISH, AES,			0 }, { XTS, 0 },		1, 1 },
-	{ { AES, SERPENT,					0 }, { XTS, 0 },		1, 1 },
-	{ { AES, TWOFISH, SERPENT,			0 }, { XTS, 0 },		1, 1 },
-	{ { SERPENT, TWOFISH,				0 }, { XTS, 0 },		1, 1 },
-	{ { KUZNYECHIK, CAMELLIA,			0 }, { XTS, 0 },		0, 1 },
-	{ { TWOFISH, KUZNYECHIK,			0 }, { XTS, 0 },		0, 1 },
-	{ { SERPENT, CAMELLIA,				0 }, { XTS, 0 },		0, 1 },
-	{ { AES, KUZNYECHIK,				0 }, { XTS, 0 },		0, 1 },
-	{ { CAMELLIA, SERPENT, KUZNYECHIK,	0 }, { XTS, 0 },		0, 1 },
-	{ { 0,								0 }, { 0,    0},		0, 0 }	// Must be all-zero
+	{ { 0,								0 }, { 0,   0},				0, 0 },	// Must be all-zero
+	{ { AES,							0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { SERPENT,						0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { TWOFISH,						0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { CAMELLIA,						0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { KUZNYECHIK,						0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { TWOFISH, AES,					0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { SERPENT, TWOFISH, AES,			0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { AES, SERPENT,					0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { AES, TWOFISH, SERPENT,			0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { SERPENT, TWOFISH,				0 }, { XTS, XEH, 0 },		1, 1 },
+	{ { KUZNYECHIK, CAMELLIA,			0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { TWOFISH, KUZNYECHIK,			0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { SERPENT, CAMELLIA,				0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { AES, KUZNYECHIK,				0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { CAMELLIA, SERPENT, KUZNYECHIK,	0 }, { XTS, XEH, 0 },		0, 1 },
+	{ { 0,								0 }, { 0,   0},				0, 0 }	// Must be all-zero
 
 #else // TC_WINDOWS_BOOT
 
 	// Encryption algorithms available for boot drive encryption
-	{ { 0,						0 }, { 0, 0 },			0 },	// Must be all-zero
-	{ { AES,					0 }, { XTS, XEH, 0 },	1 },
-	{ { SERPENT,				0 }, { XTS, 0 },		1 },
-	{ { TWOFISH,				0 }, { XTS, 0 },		1 },
-	{ { TWOFISH, AES,			0 }, { XTS, 0 },		1 },
-	{ { SERPENT, TWOFISH, AES,	0 }, { XTS, 0 },		1 },
-	{ { AES, SERPENT,			0 }, { XTS, 0 },		1 },
-	{ { AES, TWOFISH, SERPENT,	0 }, { XTS, 0 },		1 },
-	{ { SERPENT, TWOFISH,		0 }, { XTS, 0 },		1 },
-	{ { 0,						0 }, { 0, 0 },			0 },	// Must be all-zero
+	{ { 0,						0 }, { 0,   0 },			0 },	// Must be all-zero
+	{ { AES,					0 }, { XTS, XEH, 0 },		1 },
+	{ { SERPENT,				0 }, { XTS, XEH, 0 },		1 },
+	{ { TWOFISH,				0 }, { XTS, XEH, 0 },		1 },
+	{ { TWOFISH, AES,			0 }, { XTS, XEH, 0 },		1 },
+	{ { SERPENT, TWOFISH, AES,	0 }, { XTS, XEH, 0 },		1 },
+	{ { AES, SERPENT,			0 }, { XTS, XEH, 0 },		1 },
+	{ { AES, TWOFISH, SERPENT,	0 }, { XTS, XEH, 0 },		1 },
+	{ { SERPENT, TWOFISH,		0 }, { XTS, XEH, 0 },		1 },
+	{ { 0,						0 }, { 0,   0 },			0 },	// Must be all-zero
 
 #endif
 
@@ -1006,7 +1006,6 @@ void EncryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 	switch (cryptoInfo->mode)
 	{
 	case XTS:
-	case XEH:
 		{
 			unsigned __int8 *ks = cryptoInfo->ks;
 			unsigned __int8 *ks2 = cryptoInfo->ks2;
@@ -1024,6 +1023,31 @@ void EncryptBuffer (unsigned __int8 *buf, TC_LARGEST_COMPILER_UINT len, PCRYPTO_
 				cipher = EAGetNextCipher (cryptoInfo->ea, cipher))
 			{
 				EncryptBufferXTS (buf, len, &dataUnitNo, 0, ks, ks2, cipher);
+
+				ks += CipherGetKeyScheduleSize (cipher);
+				ks2 += CipherGetKeyScheduleSize (cipher);
+			}
+		}
+		break;
+
+	case XEH:
+		{
+			unsigned __int8 *ks = cryptoInfo->ks;
+			unsigned __int8 *ks2 = cryptoInfo->ks2;
+			UINT64_STRUCT dataUnitNo;
+			int cipher;
+
+			// When encrypting/decrypting a buffer (typically a volume header) the sequential number
+			// of the first XEH data unit in the buffer is always 0 and the start of the buffer is
+			// always assumed to be aligned with the start of a data unit.
+			dataUnitNo.LowPart = 0;
+			dataUnitNo.HighPart = 0;
+
+			for (cipher = EAGetFirstCipher (cryptoInfo->ea);
+				cipher != 0;
+				cipher = EAGetNextCipher (cryptoInfo->ea, cipher))
+			{
+				EncryptBufferXEH (buf, len, &dataUnitNo, 0, ks, ks2, cipher);
 
 				ks += CipherGetKeyScheduleSize (cipher);
 				ks2 += CipherGetKeyScheduleSize (cipher);
@@ -1181,7 +1205,6 @@ void DecryptDataUnitsCurrentThread (unsigned __int8 *buf, const UINT64_STRUCT *s
 	switch (ci->mode)
 	{
 	case XTS:
-	case XEH:
 		ks += EAGetKeyScheduleSize (ea);
 		ks2 += EAGetKeyScheduleSize (ea);
 
@@ -1191,6 +1214,25 @@ void DecryptDataUnitsCurrentThread (unsigned __int8 *buf, const UINT64_STRUCT *s
 			ks2 -= CipherGetKeyScheduleSize (cipher);
 
 			DecryptBufferXTS (buf,
+				nbrUnits * ENCRYPTION_DATA_UNIT_SIZE,
+				structUnitNo,
+				0,
+				ks,
+				ks2,
+				cipher);
+		}
+		break;
+
+	case XEH:
+		ks += EAGetKeyScheduleSize (ea);
+		ks2 += EAGetKeyScheduleSize (ea);
+
+		for (cipher = EAGetFirstCipher (ea); cipher != 0; cipher = EAGetPreviousCipher (ea, cipher))
+		{
+			ks -= CipherGetKeyScheduleSize (cipher);
+			ks2 -= CipherGetKeyScheduleSize (cipher);
+
+			DecryptBufferXEH (buf,
 				nbrUnits * ENCRYPTION_DATA_UNIT_SIZE,
 				structUnitNo,
 				0,
